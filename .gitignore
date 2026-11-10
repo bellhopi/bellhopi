@@ -1,0 +1,11 @@
+/bin/
+/dist/
+/state/
+/config.json
+/.env
+/.env.*
+/.claude/settings.local.json
+/docs/superpowers/
+.DS_Store
+*.test
+coverage.out
