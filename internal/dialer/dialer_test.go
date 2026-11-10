@@ -10,11 +10,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/bellhopi/bellhopi/internal/privatefs"
 	"github.com/coder/websocket"
 	"github.com/enetx/g"
 )
@@ -25,8 +29,8 @@ func testConfig(t *testing.T) (Config, ed25519.PrivateKey) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := t.TempDir()
-	if err := os.Chmod(dir, 0700); err != nil {
+	dir := filepath.Join(t.TempDir(), "state")
+	if err := privatefs.MkdirAll(g.String(dir)); err != nil {
 		t.Fatal(err)
 	}
 	return Config{OpenAIKey: "fake-openai-key", TelnyxKey: "fake-telnyx-key", TelnyxPublicKey: g.String(base64.StdEncoding.EncodeToString(pub)), ConnectionID: "test-connection", From: "+15555550100", PublicURL: "https://calls.example.test", APIToken: "01234567890123456789012345678901", Listen: "127.0.0.1:8787", StateDir: g.String(dir), LiveModel: "gpt-live-1", BackendModel: "gpt-6-luna", Voice: "marin", MaxCallSeconds: 30}, private
@@ -540,7 +544,7 @@ func TestWebhookRejectsForgeryAndWrongCall(t *testing.T) {
 }
 
 func TestConfigPrivateAndEnv(t *testing.T) {
-	path := g.String(t.TempDir() + "/config.json")
+	path := g.String(filepath.Join(t.TempDir(), "private", "config.json"))
 	created := InitConfig(path)
 	if created.IsErr() {
 		t.Fatal(created.Err())
@@ -558,7 +562,11 @@ func TestConfigPrivateAndEnv(t *testing.T) {
 	if LoadConfig(path).Unwrap().OpenAIKey != "environment-secret" {
 		t.Fatal("environment override failed")
 	}
-	if err := os.Chmod(path.Std(), 0644); err != nil {
+	if runtime.GOOS == "windows" {
+		if output, err := exec.Command("icacls", path.Std(), "/grant", "*S-1-1-0:(R)").CombinedOutput(); err != nil {
+			t.Fatalf("grant test access: %v %s", err, output)
+		}
+	} else if err := os.Chmod(path.Std(), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if LoadConfig(path).IsOk() {

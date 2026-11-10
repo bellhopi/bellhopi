@@ -2,6 +2,8 @@
 
 Use the skill's installed `bin/concierge-dialer`. If building from source, the repository README gives the build and installation commands. Installation is separate from provider configuration and never places a call.
 
+Prebuilt packages are available from [GitHub Releases](https://github.com/bellhopi/bellhopi/releases/latest) for macOS, Linux, and Windows on x64 and ARM64. They include the skill and need no Go installation. On Windows, use `bin/concierge-dialer.exe` for every command below.
+
 ## Private configuration
 
 Run:
@@ -14,6 +16,8 @@ Run:
 The default configuration is `${XDG_CONFIG_HOME:-$HOME/.config}/concierge-dialer/config.json`. `init` creates a private file and random local API token, and refuses to overwrite existing configuration. To use another path, pass `--config /absolute/path/config.json` **before** every command.
 
 Have the user enter their credentials using a local editor or their environment's secret mechanism. Do not ask for API keys in conversation, place them in task files, commit them, pass them in CLI arguments, or print the configuration. Keep the file mode at `0600` and its directory private.
+
+On Windows, `init` creates a protected directory and file that grant access only to the current user, SYSTEM, and Administrators. Keep task and answer files in that directory to inherit private access. The service checks those access-control lists instead of Unix permission bits and rejects shared files. Use the `config_path` reported by `init` to locate the directory.
 
 | Configuration field | Value |
 | --- | --- |

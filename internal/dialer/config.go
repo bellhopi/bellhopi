@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bellhopi/bellhopi/internal/privatefs"
 	"github.com/enetx/g"
 )
 
@@ -53,14 +54,14 @@ func InitConfig(path g.String) g.Result[Config] {
 		return g.Err[Config](err)
 	}
 	cfg.APIToken = g.String(base64.RawURLEncoding.EncodeToString(secret))
-	if err := os.MkdirAll(filepath.Dir(path.Std()), 0700); err != nil {
+	if err := privatefs.MkdirAll(g.String(filepath.Dir(path.Std()))); err != nil {
 		return g.Err[Config](err)
 	}
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return g.Err[Config](err)
 	}
-	f, err := os.OpenFile(path.Std(), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	f, err := privatefs.Create(path)
 	if err != nil {
 		return g.Err[Config](err)
 	}
@@ -84,8 +85,8 @@ func LoadConfig(path g.String) g.Result[Config] {
 		if statErr != nil {
 			return g.Err[Config](statErr)
 		}
-		if st.Mode().Perm()&0077 != 0 {
-			return g.Err[Config](errors.New("configuration must be private: chmod 600 the config file"))
+		if err := privatefs.Check(f); err != nil {
+			return g.Err[Config](err)
 		}
 		if st.Size() > 65536 {
 			return g.Err[Config](errors.New("configuration exceeds 64 KiB"))

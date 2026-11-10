@@ -7,6 +7,8 @@ description: Call businesses on the user's behalf, navigate phone menus, speak w
 
 Use the bundled `bin/concierge-dialer` executable relative to this skill's directory. The same skill works in Codex and Claude Code; do not assume the current working directory contains the binary. There is no browser interface.
 
+On Windows, use `bin/concierge-dialer.exe`. Private files are checked using Windows access-control lists. Write task and answer files inside the private configuration directory created by `init` so they inherit its access controls; Unix `chmod` commands do not secure Windows files.
+
 If configuration or the executable is missing, read [references/setup.md](references/setup.md). Each user supplies their own OpenAI and Telnyx credentials privately. Never ask them to paste API keys into chat or print their configuration. `doctor` checks local configuration only; it does not prove the phone connection works.
 
 ## Resolve the task

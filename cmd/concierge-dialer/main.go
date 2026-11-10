@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/bellhopi/bellhopi/internal/dialer"
+	"github.com/bellhopi/bellhopi/internal/privatefs"
 	"github.com/enetx/g"
 )
 
@@ -245,8 +246,11 @@ func readPrivate(path g.String, limit g.Int) g.Result[g.Bytes] {
 	if err != nil {
 		return g.Err[g.Bytes](err)
 	}
-	if !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 {
-		return g.Err[g.Bytes](errors.New("input must be a private regular file (chmod 600)"))
+	if !info.Mode().IsRegular() {
+		return g.Err[g.Bytes](errors.New("input must be a private regular file"))
+	}
+	if err := privatefs.Check(file); err != nil {
+		return g.Err[g.Bytes](err)
 	}
 	data, err := io.ReadAll(io.LimitReader(file, int64(limit)+1))
 	if err != nil {

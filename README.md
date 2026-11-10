@@ -8,9 +8,41 @@ Built in Go with [enetx/g](https://github.com/enetx/g). Bring your own Telnyx an
 
 ## Quick setup
 
-You need Git, [Go 1.27 or newer](https://go.dev/dl/), `make`, and either Claude Code or Codex. The commands below use a macOS/Linux shell.
+You need Claude Code or Codex and your Telnyx/OpenAI accounts. The prebuilt packages do not require Go, Git, or `make`.
 
-### 1. Download, build, and install
+### 1. Download and install
+
+Download the matching archive from [the latest release](https://github.com/bellhopi/bellhopi/releases/latest) and extract it:
+
+| Platform | Archive suffix |
+| --- | --- |
+| macOS, Apple Silicon | `darwin_arm64.tar.gz` |
+| macOS, Intel | `darwin_amd64.tar.gz` |
+| Linux, x64 | `linux_amd64.tar.gz` |
+| Linux, ARM64 | `linux_arm64.tar.gz` |
+| Windows, x64 | `windows_amd64.zip` |
+| Windows, ARM64 | `windows_arm64.zip` |
+
+Each archive contains the executable, skill, license notices, this guide, and `BUILD.json` identifying the version and source commit. The release includes `SHA256SUMS` to verify downloads. Binaries are not signed with Apple Developer ID or Windows Authenticode certificates.
+
+Open a terminal in the extracted folder. On macOS or Linux:
+
+```sh
+./bin/concierge-dialer install --target both --source "$PWD/skills/concierge-dialer"
+```
+
+On Windows, use PowerShell:
+
+```powershell
+.\bin\concierge-dialer.exe install --target both --source "$PWD\skills\concierge-dialer"
+```
+
+For subsequent CLI examples, Windows users should replace `./bin/concierge-dialer` with `.\bin\concierge-dialer.exe`.
+
+<details>
+<summary>Build from source instead</summary>
+
+Requires Git, [Go 1.27 or newer](https://go.dev/dl/), and `make`. In a macOS/Linux shell:
 
 ```sh
 git clone https://github.com/bellhopi/bellhopi.git
@@ -18,6 +50,8 @@ cd bellhopi
 make build
 ./bin/concierge-dialer install --target both --source "$PWD/skills/concierge-dialer"
 ```
+
+</details>
 
 Use `--target claude` or `--target codex` to install for just one client. The installer copies the skill and executable into `~/.claude/skills/concierge-dialer/` and/or `~/.agents/skills/concierge-dialer/`. It refuses to overwrite an existing installation.
 
@@ -34,6 +68,8 @@ nano "${XDG_CONFIG_HOME:-$HOME/.config}/concierge-dialer/config.json"
 ```
 
 Use your preferred local editor if you do not use `nano`. Fill these fields in the generated JSON file:
+
+On Windows, run `.\bin\concierge-dialer.exe init`, then open the returned `config_path` in a text editor. The default is `$HOME\.config\concierge-dialer\config.json`. Windows uses private access-control lists rather than Unix `0600` permissions. Keep task and answer files in that initialized directory so they inherit private access.
 
 | Field | What to enter |
 | --- | --- |
@@ -68,7 +104,7 @@ Bellhopi supplies the media WebSocket URL automatically when it places a call. T
 
 ### 5. Check configuration and start Bellhopi
 
-In another terminal, from the repository directory:
+In another terminal, from the extracted package or repository directory:
 
 ```sh
 ./bin/concierge-dialer doctor
@@ -126,7 +162,7 @@ Commands emit JSON and exit nonzero on errors. To use another configuration file
 ./bin/concierge-dialer reconcile --id CALL_ID
 ```
 
-Normally the [skill](skills/concierge-dialer/SKILL.md) prepares the request and runs these commands. Request files contain string fields `id`, `to`, `task`, and `information`; request and answer files must have private permissions (`0600`). Keep one stable call ID for each task, and reuse a manual DTMF command ID only when checking/retrying that exact action. Never create a new ID to bypass an unknown outcome.
+Normally the [skill](skills/concierge-dialer/SKILL.md) prepares the request and runs these commands. Request files contain string fields `id`, `to`, `task`, and `information`; request and answer files must have private permissions (`0600` on Unix or a private Windows access-control list). Keep one stable call ID for each task, and reuse a manual DTMF command ID only when checking/retrying that exact action. Never create a new ID to bypass an unknown outcome.
 
 ## Troubleshooting
 
@@ -148,9 +184,11 @@ make check
 make build
 ```
 
-`test` runs the Go tests. `check` runs the race detector and `go vet`. Tests use local fake providers and temporary client installations. The [verification record](docs/verification.md) distinguishes those checks from real Telnyx/GPT-Live audio, IVR acceptance, and business outcomes, which still need a configured live call.
+In a source checkout, `test` runs the Go tests and `check` runs the race detector and `go vet`. Tests use local fake providers and temporary client installations. The [verification record](https://github.com/bellhopi/bellhopi/blob/main/docs/verification.md) distinguishes those checks from real Telnyx/GPT-Live audio, IVR acceptance, and business outcomes, which still need a configured live call.
 
-Claude Code commit, pull-request, and session-link attribution are disabled for this repository in [.claude/settings.json](.claude/settings.json), using its [documented attribution settings](https://code.claude.com/docs/en/settings-reference#attribution).
+[GitHub Actions](https://github.com/bellhopi/bellhopi/actions/workflows/release.yml) tests and packages all six targets on standard hosted runners. Those runners are [free for public repositories](https://docs.github.com/en/billing/concepts/product-billing/github-actions). A `vMAJOR.MINOR.PATCH` tag publishes the archives and checksums only after every native test and installation smoke check passes. Pushes and pull requests build development artifacts without creating a release.
+
+Claude Code commit, pull-request, and session-link attribution are disabled for this repository in [.claude/settings.json](https://github.com/bellhopi/bellhopi/blob/main/.claude/settings.json), using its [documented attribution settings](https://code.claude.com/docs/en/settings-reference#attribution).
 
 ## License
 

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bellhopi/bellhopi/internal/privatefs"
 	"github.com/enetx/g"
 )
 
@@ -30,15 +31,8 @@ func NewServer(cfg Config) g.Result[*Server] {
 	if err := cfg.validate(); err != nil {
 		return g.Err[*Server](err)
 	}
-	if err := os.MkdirAll(cfg.StateDir.Std(), 0700); err != nil {
+	if err := privatefs.MkdirAll(cfg.StateDir); err != nil {
 		return g.Err[*Server](err)
-	}
-	st, err := os.Stat(cfg.StateDir.Std())
-	if err != nil {
-		return g.Err[*Server](err)
-	}
-	if st.Mode().Perm()&0077 != 0 {
-		return g.Err[*Server](errors.New("state_dir must have permissions 700"))
 	}
 	s := &Server{cfg: cfg, calls: g.NewMap[g.String, *call](), http: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, telnyxURL: "https://api.telnyx.com/v2", liveURL: "wss://api.openai.com/v1/live/sessions"}
 	b, err := os.ReadFile(s.activePath().Std())

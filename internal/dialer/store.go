@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bellhopi/bellhopi/internal/privatefs"
 	"github.com/enetx/g"
 )
 
@@ -32,7 +33,7 @@ func atomicWrite(path g.String, value any) error {
 		return err
 	}
 	defer os.Remove(f.Name())
-	if err = f.Chmod(0600); err == nil {
+	if err = privatefs.Check(f); err == nil {
 		_, err = f.Write(b)
 	}
 	if err == nil {
@@ -45,15 +46,7 @@ func atomicWrite(path g.String, value any) error {
 	if closeErr != nil {
 		return closeErr
 	}
-	if err = os.Rename(f.Name(), path.Std()); err != nil {
-		return err
-	}
-	d, err := os.Open(filepath.Dir(path.Std()))
-	if err != nil {
-		return err
-	}
-	defer d.Close()
-	return d.Sync()
+	return privatefs.Replace(g.String(f.Name()), path)
 }
 
 func (s *Server) receiptPath(id g.String) g.String {
@@ -84,7 +77,7 @@ func (s *Server) loadReceipt(id g.String) g.Result[receipt] {
 }
 
 func (s *Server) reserve(id g.String) error {
-	f, err := os.OpenFile(s.activePath().Std(), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	f, err := privatefs.Create(s.activePath())
 	if err != nil {
 		return errors.New("an active call receipt exists; reconcile or hang up before another call")
 	}

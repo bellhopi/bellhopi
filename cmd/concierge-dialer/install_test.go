@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/enetx/g"
@@ -19,14 +20,14 @@ func TestInstallBothCopiesSkillAndBinary(t *testing.T) {
 		t.Fatalf("expected two targets: %v", result.Unwrap())
 	}
 	for destination := range result.Unwrap().Iter() {
-		for path, want := range (g.Map[g.String, g.String]{"SKILL.md": "---\nname: concierge-dialer\ndescription: Call businesses\n---\n", "references/setup.md": "Setup\n", "bin/concierge-dialer": "test binary\n"}).Iter() {
+		for path, want := range (g.Map[g.String, g.String]{"SKILL.md": "---\nname: concierge-dialer\ndescription: Call businesses\n---\n", "references/setup.md": "Setup\n", "bin/" + binaryName(): "test binary\n"}).Iter() {
 			data, err := os.ReadFile(filepath.Join(destination.Std(), path.Std()))
 			if err != nil || g.String(data) != want {
 				t.Fatalf("%s: %q %v", path, data, err)
 			}
 		}
-		info, err := os.Stat(filepath.Join(destination.Std(), "bin", "concierge-dialer"))
-		if err != nil || info.Mode().Perm() != 0700 {
+		info, err := os.Stat(filepath.Join(destination.Std(), "bin", binaryName().Std()))
+		if err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0700) {
 			t.Fatalf("binary permissions: %v %v", info, err)
 		}
 	}
@@ -102,7 +103,7 @@ func TestInstallFromPackagedSkillUsesRunningBinary(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(source.Std(), "bin"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(source.Std(), "bin", "concierge-dialer"), []byte("old binary"), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(source.Std(), "bin", binaryName().Std()), []byte("old binary"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	result := install("both", source, g.String(t.TempDir()), binary)
@@ -110,7 +111,7 @@ func TestInstallFromPackagedSkillUsesRunningBinary(t *testing.T) {
 		t.Fatal(result.Err())
 	}
 	for dest := range result.Unwrap().Iter() {
-		b, err := os.ReadFile(filepath.Join(dest.Std(), "bin", "concierge-dialer"))
+		b, err := os.ReadFile(filepath.Join(dest.Std(), "bin", binaryName().Std()))
 		if err != nil || string(b) != "test binary\n" {
 			t.Fatal("packaged executable was duplicated or replaced incorrectly")
 		}

@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/bellhopi/bellhopi/internal/dialer"
+	"github.com/bellhopi/bellhopi/internal/privatefs"
 	"github.com/enetx/g"
 )
 
@@ -110,7 +113,11 @@ func TestPrivateInputAndBadFlagsNeverSend(t *testing.T) {
 	defer server.Close()
 	cfg := dialer.Config{Listen: g.String(server.Listener.Addr().String()), APIToken: "test"}
 	public := privateFile(t, "public.json", `{"id":"request-0001","to":"+18005551234","task":"Check hours","information":""}`)
-	if err := os.Chmod(public.Std(), 0644); err != nil {
+	if runtime.GOOS == "windows" {
+		if output, err := exec.Command("icacls", public.Std(), "/grant", "*S-1-1-0:(R)").CombinedOutput(); err != nil {
+			t.Fatalf("grant test access: %v %s", err, output)
+		}
+	} else if err := os.Chmod(public.Std(), 0644); err != nil {
 		t.Fatal(err)
 	}
 	unknown := privateFile(t, "unknown.json", `{"id":"request-0001","to":"+18005551234","task":"Check hours","information":"","extra":true}`)
@@ -179,8 +186,19 @@ func TestOperatorResponsesRedactCredentials(t *testing.T) {
 
 func privateFile(t *testing.T, name, content g.String) g.String {
 	t.Helper()
-	path := g.String(filepath.Join(t.TempDir(), name.Std()))
-	if err := os.WriteFile(path.Std(), content.Bytes(), 0600); err != nil {
+	dir := g.String(filepath.Join(t.TempDir(), "private"))
+	if err := privatefs.MkdirAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	path := g.String(filepath.Join(dir.Std(), name.Std()))
+	f, err := privatefs.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Write(content.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
 	return path

@@ -7,9 +7,17 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/enetx/g"
 )
+
+func binaryName() g.String {
+	if runtime.GOOS == "windows" {
+		return "concierge-dialer.exe"
+	}
+	return "concierge-dialer"
+}
 
 func installCommand(args g.Slice[g.String], out io.Writer) g.Result[g.Int] {
 	set := flags("install")
@@ -119,7 +127,7 @@ func install(target, source, home, executable g.String) g.Result[g.Slice[g.Strin
 			if relative == "." {
 				return nil
 			}
-			if relative == filepath.Join("bin", "concierge-dialer") {
+			if relative == filepath.Join("bin", "concierge-dialer") || relative == filepath.Join("bin", "concierge-dialer.exe") {
 				return nil // Install the running binary once, including when copying an installed skill.
 			}
 			dest := filepath.Join(destination.Std(), relative)
@@ -137,7 +145,7 @@ func install(target, source, home, executable g.String) g.Result[g.Slice[g.Strin
 		if err := os.MkdirAll(bin.Std(), 0700); err != nil {
 			return g.Err[g.Slice[g.String]](err)
 		}
-		if copied := copyFile(executable, g.String(filepath.Join(bin.Std(), "concierge-dialer")), 0700); copied.IsErr() {
+		if copied := copyFile(executable, g.String(filepath.Join(bin.Std(), binaryName().Std())), 0700); copied.IsErr() {
 			return g.Err[g.Slice[g.String]](copied.Err())
 		}
 	}
