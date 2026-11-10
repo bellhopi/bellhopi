@@ -603,6 +603,48 @@ func TestShutdownWaitsForVoiceFinalization(t *testing.T) {
 	}
 }
 
+func TestFinalReceiptIsSavedBeforeCancellation(t *testing.T) {
+	cfg, _ := testConfig(t)
+	s := NewServer(cfg).Unwrap()
+	voice := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.CloseNow()
+		_, _, _ = conn.Read(r.Context())
+	}))
+	defer voice.Close()
+	conn, _, err := websocket.Dial(context.Background(), g.String(voice.URL).Replace("http://", "ws://", 1).Std(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	task := request()
+	c := newCall(s, task, receipt{RequestHash: "test", Snapshot: Snapshot{ID: task.ID, Status: "ending", LiveConnected: true}})
+	c.live = conn
+	close(c.closed)
+	persistedAtCancel := make(chan bool, 1)
+	cancel := c.cancel
+	c.cancel = func() {
+		saved := s.loadReceipt(task.ID)
+		persistedAtCancel <- saved.IsOk() && !saved.Unwrap().Snapshot.LiveConnected
+		cancel()
+	}
+	c.finalize()
+	select {
+	case <-c.ctx.Done():
+	case <-time.After(3 * time.Second):
+		t.Fatal("finalization did not complete")
+	}
+	await(t, func() bool {
+		saved := s.loadReceipt(task.ID)
+		return saved.IsOk() && !saved.Unwrap().Snapshot.LiveConnected
+	})
+	if !<-persistedAtCancel {
+		t.Fatal("cancellation was visible before the final receipt was persisted")
+	}
+}
+
 func TestShutdownRejectsNewCalls(t *testing.T) {
 	cfg, _ := testConfig(t)
 	s := NewServer(cfg).Unwrap()

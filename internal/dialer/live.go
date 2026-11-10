@@ -309,11 +309,11 @@ func (c *call) finalize() {
 				c.mu.Unlock()
 			}
 			live.CloseNow()
-			c.cancel()
 			c.mu.Lock()
 			c.r.Snapshot.LiveConnected = false
 			_ = c.saveLocked()
 			c.mu.Unlock()
+			c.cancel()
 		}()
 	})
 }
